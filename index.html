@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gatsby Trail Camera — clickable prototype</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#110E0E; --bg2:#1a1716; --surface:#222120; --surface2:#2c2a29; --stroke:#3a3736; --text:#fff; --text2:#a5a5a5; --text3:#777;
+  --brand:#FF3300; --brand2:#C92800; --blue:#087BFF; --green:#65B604; --amber:#F5A523; --yellow:#fff7d6;
+  --panelW:360px; --topH:52px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Roboto,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;line-height:1.35;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:#3D96FF}
+.hidden{display:none!important}
+
+/* ---------- top bar ---------- */
+.top{position:fixed;top:0;left:0;right:0;height:var(--topH);display:flex;align-items:center;gap:8px;padding:0 12px;background:rgba(17,14,14,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--stroke);z-index:20}
+.top .brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:.2px;white-space:nowrap}
+.top .brand .dot{width:22px;height:22px;border-radius:6px;background:var(--brand);display:grid;place-items:center;font-size:12px;font-weight:900;color:#fff}
+.top .brand small{color:var(--text2);font-weight:400}
+.top .spacer{flex:1}
+.top select{background:var(--surface);color:var(--text);border:1px solid var(--stroke);border-radius:8px;padding:6px 10px;max-width:38vw}
+.tbtn{height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--stroke);background:var(--surface);color:var(--text);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.tbtn:hover{background:var(--surface2)}
+.tbtn.active{border-color:var(--brand);color:#fff;background:#3a1a12}
+.tbtn kbd{font:inherit;font-size:11px;color:var(--text3);border:1px solid var(--stroke);border-radius:4px;padding:0 4px}
+.tbtn svg{width:16px;height:16px}
+
+/* ---------- layout ---------- */
+.app{position:fixed;inset:var(--topH) 0 0 0;display:flex}
+.stage{flex:1;position:relative;overflow:hidden;display:grid;place-items:center;background:radial-gradient(1200px 600px at 50% 110%,#231d1b 0%,var(--bg) 70%)}
+.panel{width:var(--panelW);border-left:1px solid var(--stroke);background:var(--bg2);overflow:auto;padding:16px 16px 40px}
+body.nopanel .panel{display:none}
+
+/* ---------- phone ---------- */
+.phone{width:375px;height:812px;position:relative;border-radius:44px;background:#000;box-shadow:0 0 0 10px #1c1a19,0 0 0 12px #3a3736,0 30px 80px rgba(0,0,0,.6);overflow:hidden;transform-origin:center center}
+.phone.flat{border-radius:0;box-shadow:none}
+.screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;background:#111;scrollbar-width:none}
+.screen::-webkit-scrollbar{display:none}
+.frame{position:relative;width:375px}
+.frame img{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none}
+.frame.fadein{animation:fade .18s ease-out}
+@keyframes fade{from{opacity:.25}to{opacity:1}}
+.hs{position:absolute;border-radius:10px;cursor:pointer;background:rgba(8,123,255,0);border:2px solid rgba(8,123,255,0);transition:background .2s,border-color .2s}
+.hs.show,.phone.showhs .hs{background:rgba(8,123,255,.22);border-color:rgba(8,123,255,.9)}
+.hs.inferred.show,.phone.showhs .hs.inferred{background:rgba(245,165,35,.18);border-color:rgba(245,165,35,.9)}
+.hs:hover{background:rgba(8,123,255,.12)}
+.hs .lbl{position:absolute;left:6px;top:-22px;font-size:11px;font-weight:700;background:var(--blue);color:#fff;padding:2px 6px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s}
+.hs.inferred .lbl{background:var(--amber);color:#111}
+.phone.showhs .hs .lbl,.hs.show .lbl{opacity:1}
+.callout{position:absolute;font-size:10px;font-weight:900;letter-spacing:.3px;color:#111;background:var(--yellow);padding:2px 6px;border-radius:4px;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.callout.left{left:4px;border-left:3px solid var(--brand)}
+.callout.right{right:4px;border-right:3px solid var(--brand)}
+body:not(.annot) .callout{display:none}
+
+/* card (storyboard) screens */
+.card{position:absolute;inset:0;display:flex;flex-direction:column;background:linear-gradient(180deg,#1b1817,#0e0c0c);padding:56px 20px 34px}
+.card .img{flex:1;display:grid;place-items:center;min-height:0}
+.card .img img{max-width:100%;max-height:100%;object-fit:contain;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.card h2{margin:18px 0 6px;font-size:20px;line-height:1.2}
+.card p{margin:0 0 16px;color:var(--text2);white-space:pre-line;font-size:14px;max-height:150px;overflow:auto}
+.card .eyebrow{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--brand);font-weight:700;margin-bottom:6px}
+.ysbtn{display:block;width:100%;height:48px;border-radius:8px;background:var(--brand);color:#fff;font-weight:900;font-size:15px;letter-spacing:.2px}
+.ysbtn.secondary{background:var(--surface2);border:1px solid var(--stroke)}
+.ysbtn:hover{filter:brightness(1.08)}
+
+/* overlays inside phone */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;z-index:5;animation:fade .2s}
+.sheet{width:100%;background:var(--surface);border-radius:16px 16px 0 0;padding:12px 16px 28px;max-height:78%;overflow:auto}
+.sheet .handle{width:40px;height:4px;border-radius:2px;background:#555;margin:0 auto 14px}
+.sheet .eyebrow{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--text2);font-weight:700;margin-bottom:6px}
+.sheet h3{margin:0 0 14px;font-size:18px;line-height:1.25}
+.sheet .opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--stroke);margin-bottom:8px;font-weight:500}
+.sheet .opt:hover{border-color:var(--brand)}
+.sheet .opt small{color:var(--text2);font-weight:400;display:block;font-size:12px}
+.sheet .opt .n{width:26px;height:26px;border-radius:50%;background:var(--brand);display:grid;place-items:center;font-size:12px;font-weight:900;flex:none}
+.sheet .cancel{margin-top:6px;color:var(--text2);width:100%;padding:10px}
+.autobar{position:absolute;left:0;top:0;height:3px;background:var(--brand);width:0;z-index:6;transition:width linear}
+.toast{position:absolute;left:50%;bottom:110px;transform:translateX(-50%);background:rgba(20,18,18,.94);border:1px solid var(--stroke);color:#fff;padding:8px 14px;border-radius:999px;font-size:12px;z-index:7;white-space:nowrap;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+
+/* ---------- panel ---------- */
+.panel h1{font-size:15px;margin:0 0 4px;line-height:1.3}
+.panel .sub{color:var(--text2);font-size:12px;margin-bottom:12px}
+.panel h4{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin:18px 0 8px;font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.chip{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--surface2);border:1px solid var(--stroke);color:var(--text2)}
+.chip.P0{background:#2b4a0d;border-color:var(--green);color:#d9f5b8}
+.chip.P1{background:#0d2f57;border-color:var(--blue);color:#cfe4ff}
+.chip.Before{background:#2b4a0d;border-color:var(--green);color:#d9f5b8}
+.chip.After{background:#0d2f57;border-color:var(--blue);color:#cfe4ff}
+.chip.lane{background:transparent}
+.note{background:var(--yellow);color:#172b4d;border-radius:8px;padding:10px 12px;margin:8px 0;font-size:13px;white-space:pre-line;box-shadow:0 1px 2px rgba(0,0,0,.4)}
+.note b{display:block;margin-bottom:4px;font-size:14px}
+.note img{max-width:100%;border-radius:4px;display:block}
+.caption{color:var(--text2);font-size:12px;margin:2px 0}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap}
+.thumbs img{height:110px;border-radius:8px;border:1px solid var(--stroke);cursor:zoom-in;background:#000}
+.links{display:flex;flex-direction:column;gap:6px}
+.lnk{display:flex;align-items:center;gap:8px;text-align:left;width:100%;padding:8px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--stroke)}
+.lnk:hover{border-color:var(--brand)}
+.lnk .k{flex:none;width:8px;height:8px;border-radius:50%;background:var(--blue)}
+.lnk.k-inferred .k{background:var(--amber)}
+.lnk.k-alt .k{background:#c47cff}
+.lnk.k-auto .k{background:var(--green)}
+.lnk.k-seq .k,.lnk.k-conceptual .k{background:var(--text3)}
+.lnk .t{flex:1;min-width:0}
+.lnk .t b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lnk .t small{color:var(--text2);font-size:11px}
+.legend{font-size:11px;color:var(--text3);margin-top:6px;line-height:1.6}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.list{display:flex;flex-direction:column;gap:2px}
+.list.scroll{max-height:340px;overflow:auto;border:1px solid var(--stroke);border-radius:8px;padding:4px}
+.list .lanehd{font-size:11px;color:var(--text3);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.8px}
+.list .it{display:flex;gap:8px;align-items:center;text-align:left;width:100%;padding:6px 8px;border-radius:6px;color:var(--text2)}
+.list .it:hover{background:var(--surface)}
+.list .it.cur{background:#3a1a12;color:#fff}
+.list .it .n{flex:none;width:22px;font-size:11px;color:var(--text3);text-align:right}
+.list .it .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.list .it .tg{flex:none;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:var(--surface2);color:var(--text2)}
+details summary{cursor:pointer;color:var(--text2);font-size:12px;margin:12px 0 6px;user-select:none}
+.prose{font-size:12.5px;color:var(--text2);white-space:pre-line;max-height:320px;overflow:auto;padding-right:6px}
+.kbd{font-size:11px;color:var(--text3);margin-top:16px;line-height:1.8}
+.kbd kbd{border:1px solid var(--stroke);border-radius:4px;padding:0 5px;color:var(--text2);font-family:inherit;font-size:11px}
+.small{font-size:11px;color:var(--text3)}
+
+/* ---------- home ---------- */
+.home{position:absolute;inset:0;overflow:auto;padding:40px 24px 60px}
+.home .wrap{max-width:1180px;margin:0 auto}
+.home h1{font-size:28px;margin:0 0 6px;font-weight:900;letter-spacing:-.3px}
+.home .lede{color:var(--text2);max-width:760px;margin:0 0 26px;font-size:15px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.fc{background:var(--surface);border:1px solid var(--stroke);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;transition:border-color .2s,transform .2s}
+.fc:hover{border-color:#5a5654;transform:translateY(-2px)}
+.fc .th{height:190px;background:#0b0a0a;display:flex;gap:6px;justify-content:center;align-items:flex-start;overflow:hidden;padding:14px 14px 0}
+.fc .th img{height:100%;border-radius:10px 10px 0 0;box-shadow:0 8px 30px rgba(0,0,0,.6);object-fit:cover;object-position:top}
+.fc .body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
+.fc h3{margin:0;font-size:16px;line-height:1.3}
+.fc p{margin:0;color:var(--text2);font-size:13px;flex:1}
+.fc .meta{color:var(--text3);font-size:12px}
+.fc .actions{display:flex;gap:8px;margin-top:4px}
+.fc .actions .ysbtn{height:40px;font-size:13px}
+.howto{margin-top:34px;padding:18px 20px;border:1px solid var(--stroke);border-radius:12px;background:var(--bg2);color:var(--text2);font-size:13px;line-height:1.6}
+.howto b{color:#fff}
+.howto code{background:var(--surface2);padding:1px 6px;border-radius:4px;color:#fff}
+
+/* ---------- lightbox ---------- */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);display:grid;place-items:center;z-index:50;cursor:zoom-out}
+.lightbox img{max-width:94vw;max-height:94vh;border-radius:8px}
+
+/* ---------- responsive / participant ---------- */
+@media (max-width:900px){ body:not(.forcepanel) .panel{display:none} .top select{max-width:32vw} .tbtn .txt{display:none} .tbtn{padding:0 9px} }
+body.test .top{background:transparent;border-color:transparent;backdrop-filter:none}
+body.test .top .brand small,body.test .top select,body.test .tbtn.fac{display:none}
+body.test .panel{display:none}
+body.test .hs .lbl{display:none}
+body.test .callout{display:none}
+@media (max-width:480px){
+  .phone{border-radius:0;box-shadow:none}
+  .stage{background:#000}
+}
+</style>
+</head>
+<body class="annot">
+<header class="top">
+  <button class="brand" id="btnHome" title="All flows"><span class="dot">X</span><span>Gatsby Trail Camera <small>· prototype</small></span></button>
+  <select id="flowSel" title="Switch flow"></select>
+  <span class="spacer"></span>
+  <button class="tbtn" id="btnBack" title="Back (←)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span class="txt">Back</span></button>
+  <button class="tbtn fac" id="btnHs" title="Show hotspots (H)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 12h8M12 8v8"/></svg><span class="txt">Hotspots</span> <kbd>H</kbd></button>
+  <button class="tbtn fac" id="btnAnnot" title="Show New/Update callouts on screen (A)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v11H9l-5 4z"/></svg><span class="txt">Callouts</span> <kbd>A</kbd></button>
+  <button class="tbtn fac" id="btnPanel" title="Facilitator panel (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/></svg><span class="txt">Panel</span> <kbd>F</kbd></button>
+  <button class="tbtn fac" id="btnMode" title="Toggle participant mode (clean phone only)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg><span class="txt">Participant view</span></button>
+  <button class="tbtn" id="btnShare" title="Copy link to this screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 14L21 3M21 3h-7m7 0v7M21 14v5a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h5"/></svg><span class="txt">Copy link</span></button>
+</header>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <div class="home" id="home"></div>
+    <div class="phone hidden" id="phone">
+      <div class="screen" id="screen"></div>
+      <div class="autobar" id="autobar"></div>
+      <div class="toast" id="toast"></div>
+    </div>
+  </div>
+  <aside class="panel" id="panel"></aside>
+</div>
+
+<script src="data.js"></script>
+<script>
+(function(){
+const P = window.PROTO;
+const $ = s => document.querySelector(s);
+const el = (t, cls, html) => { const e=document.createElement(t); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; };
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// ---------- indexes ----------
+const groups = {};
+P.groups.forEach(g => {
+  g.byId = {};
+  g.screens.forEach(s => { s.type='screen'; g.byId[s.id]=s; });
+  g.cards.forEach(c => { c.type='card'; c.name=c.title; g.byId[c.id]=c; });
+  g.decisions.forEach(d => { d.type='decision'; d.name=d.text; g.byId[d.id]=d; });
+  g.out = {}; g.inn = {};
+  g.links.forEach(l => { (g.out[l.src]=g.out[l.src]||[]).push(l); (g.inn[l.dst]=g.inn[l.dst]||[]).push(l); });
+  g.notesBy = {}; g.notes.forEach(n => { const k=n.screen||'_flow'; (g.notesBy[k]=g.notesBy[k]||[]).push(n); });
+  g.orderIdx = {}; g.order.forEach((id,i)=>g.orderIdx[id]=i);
+  groups[g.key]=g;
+});
+
+// ---------- state ----------
+const state = { g:null, node:null, history:[], baseScreen:null, test:false, timer:null, showHs:false };
+const qs = new URLSearchParams(location.search);
+state.test = qs.get('mode')==='test';
+document.body.classList.toggle('test', state.test);
+if (localStorage.getItem('proto.panel')==='off' && !state.test) document.body.classList.add('nopanel');
+
+function cleanName(n){ return n.replace(/\s+/g,' ').trim(); }
+function shortName(n){ return cleanName(n).replace(/^[\d.]+\s*/,'') || cleanName(n); }
+
+// ---------- routing ----------
+function route(){
+  const h = location.hash.replace(/^#\/?/,'');
+  if(!h){ showHome(); return; }
+  const [gk, ...rest] = h.split('/');
+  const id = decodeURIComponent(rest.join('/'));
+  const g = groups[gk];
+  if(!g){ showHome(); return; }
+  if(state.g!==g){ state.history=[]; state.baseScreen=null; }
+  state.g=g;
+  const node = g.byId[id] || g.byId[g.entry];
+  render(node, true);
+}
+function go(id, push=true){
+  const g=state.g; if(!g) return;
+  if(push && state.node) state.history.push(state.node.id);
+  location.hash = '#/'+g.key+'/'+encodeURIComponent(id);
+}
+function back(){
+  if(state.history.length){ const id=state.history.pop(); state.suppressPush=true; location.hash='#/'+state.g.key+'/'+encodeURIComponent(id); }
+  else showHomeHash();
+}
+function showHomeHash(){ location.hash=''; }
+window.addEventListener('hashchange', route);
+
+// ---------- home ----------
+function showHome(){
+  clearTimer();
+  state.node=null; state.g=null;
+  $('#phone').classList.add('hidden'); $('#home').classList.remove('hidden');
+  $('#flowSel').value='';
+  const home=$('#home'); home.innerHTML='';
+  const wrap=el('div','wrap');
+  wrap.appendChild(el('h1',null,'Gatsby Trail Camera — clickable prototype'));
+  wrap.appendChild(el('p','lede','onX Hunt · P0/P1 flows from the <i>P1 - Flow</i> Figma page. Pick a flow, then tap through the screens as a hunter would. Tap anywhere that isn\'t a hotspot to reveal where you can tap.'));
+  const grid=el('div','grid');
+  P.groups.forEach(g => {
+    const fc=el('div','fc');
+    const th=el('div','th');
+    const firstScreens = g.screens.slice().sort((a,b)=>g.orderIdx[a.id]-g.orderIdx[b.id]).filter(s=>s.w>=300).slice(0,2);
+    firstScreens.forEach(s=>{ const im=el('img'); im.src='img/'+s.img; im.loading='lazy'; im.alt=''; th.appendChild(im); });
+    fc.appendChild(th);
+    const body=el('div','body');
+    body.appendChild(el('h3',null,esc(g.title)));
+    body.appendChild(el('p',null,esc(g.blurb)));
+    body.appendChild(el('div','meta',`${g.screens.length} screens · ${g.links.filter(l=>l.kind==='figma').length} Figma arrows${g.cards.length?` · ${g.cards.length} storyboard cards`:''}`));
+    const act=el('div','actions');
+    const b1=el('button','ysbtn','Start'); b1.onclick=()=>{ location.hash='#/'+g.key+'/'+encodeURIComponent(g.entry); };
+    const b2=el('button','ysbtn secondary','Copy participant link'); b2.onclick=(e)=>{ copyLink(g, g.entry, true); e.target.textContent='Copied ✓'; setTimeout(()=>e.target.textContent='Copy participant link',1600); };
+    act.appendChild(b1); act.appendChild(b2); body.appendChild(act);
+    fc.appendChild(body); grid.appendChild(fc);
+  });
+  wrap.appendChild(grid);
+  wrap.appendChild(el('div','howto',
+    '<b>For facilitators.</b> The right-hand panel shows the screen name, P0/P1 tag, the designer\'s sticky notes, New/Update callouts and every path out of the current screen (Figma arrows in blue, inferred paths in amber, "simulate" branches in purple). '+
+    'Press <code>H</code> to show hotspots, <code>A</code> to toggle callouts, <code>F</code> to hide the panel, <code>←</code> to go back, <code>→</code> to take the first path forward, <code>Esc</code> for this page. '+
+    '<b>For participants</b> use <b>Copy participant link</b> — it opens the flow with a clean phone and no annotations (<code>?mode=test</code>). Every screen has a shareable URL via <b>Copy link</b>.'));
+  home.appendChild(wrap);
+  renderPanelHome();
+}
+
+// ---------- render node ----------
+function render(node, fromRoute){
+  const g=state.g;
+  clearTimer();
+  $('#home').classList.add('hidden'); $('#phone').classList.remove('hidden');
+  $('#flowSel').value=g.key;
+  if(state.suppressPush){ state.suppressPush=false; }
+  if(node.type==='decision'){
+    // keep underlying screen visible; show sheet
+    if(!state.baseScreen){ const src=(g.inn[node.id]||[]).map(l=>g.byId[l.src]).find(n=>n&&n.type==='screen') || g.screens.find(s=>g.orderIdx[s.id]===0); state.baseScreen=src.id; drawScreen(src); }
+    state.node=node;
+    drawDecision(node);
+    renderPanel(node);
+    return;
+  }
+  state.node=node; state.baseScreen=node.id;
+  drawScreen(node);
+  renderPanel(node);
+  // auto links
+  const auto=(g.out[node.id]||[]).find(l=>l.kind==='auto');
+  if(auto){ startAuto(auto); }
+  fitPhone();
+}
+
+function drawScreen(node){
+  const g=state.g; const sc=$('#screen'); sc.innerHTML=''; sc.scrollTop=0;
+  removeSheet();
+  if(node.type==='card'){
+    const c=el('div','card');
+    c.appendChild(el('div','eyebrow','Storyboard · '+esc(g.short)));
+    const im=el('div','img'); const img=el('img'); img.src='img/'+node.img; img.alt=''; im.appendChild(img); c.appendChild(im);
+    c.appendChild(el('h2',null,esc(node.title)));
+    if(node.text) c.appendChild(el('p',null,esc(node.text)));
+    const b=el('button','ysbtn','Continue'); b.onclick=()=>go(node.next); c.appendChild(b);
+    sc.appendChild(c); return;
+  }
+  const fr=el('div','frame fadein');
+  const dispH = 375 * node.ph / node.pw;               // css px height of the image
+  const frameH = node.h * (375 / node.w);               // css px height of the logical frame
+  fr.style.height = Math.max(dispH, 812) + 'px';
+  const img=el('img'); img.src='img/'+node.img; img.alt=cleanName(node.name); img.draggable=false; fr.appendChild(img);
+  // hotspots (logical coords -> css px)
+  const k = 375/node.w;
+  (g.out[node.id]||[]).forEach(l => {
+    if(!l.hotspot) return;
+    const [x,y,w,h]=l.hotspot;
+    const hs=el('div','hs'+(l.kind==='figma'?'':' inferred'));
+    hs.style.left=(x*k)+'px'; hs.style.top=(y*k)+'px'; hs.style.width=(w*k)+'px'; hs.style.height=(h*k)+'px';
+    hs.dataset.dst=l.dst; hs.title = (l.label?l.label+' → ':'→ ')+targetName(l.dst);
+    const lbl=el('span','lbl', esc(l.label||targetName(l.dst))); hs.appendChild(lbl);
+    hs.addEventListener('click', ev => { ev.stopPropagation(); onHotspot(ev, l); });
+    fr.appendChild(hs);
+  });
+  // callouts
+  (node.callouts||[]).forEach(c => {
+    const d=el('div','callout '+(c.side||'left'), esc(c.text)); d.style.top=(c.y*k-9)+'px'; fr.appendChild(d);
+  });
+  fr.addEventListener('click', ev => { if(ev.target===img || ev.target===fr) flashHotspots(); });
+  sc.appendChild(fr);
+  if(state.showHs) $('#phone').classList.add('showhs'); else $('#phone').classList.remove('showhs');
+}
+
+function targetName(id){ const n=state.g.byId[id]; if(!n) return id; if(n.type==='decision') return 'Choose…'; return shortName(n.name||n.title||id); }
+
+function onHotspot(ev, link){
+  // overlapping hotspots -> chooser
+  const pts = document.elementsFromPoint(ev.clientX, ev.clientY).filter(e=>e.classList && e.classList.contains('hs'));
+  const dsts = [...new Set(pts.map(e=>e.dataset.dst))];
+  if(dsts.length>1){
+    const opts = dsts.map(d=>{ const l=(state.g.out[state.node.id]||[]).find(x=>x.dst===d); return {label:(l&&l.label)||targetName(d), sub:targetName(d), dst:d}; });
+    drawSheet('Two things are tappable here', 'Which one did you mean?', opts);
+    return;
+  }
+  go(link.dst);
+}
+
+function flashHotspots(){
+  const ph=$('#phone'); ph.classList.add('showhs'); setTimeout(()=>{ if(!state.showHs) ph.classList.remove('showhs'); }, 900);
+}
+
+// ---------- decisions / sheets ----------
+function drawDecision(node){
+  const g=state.g;
+  const opts=(g.out[node.id]||[]).map(l=>({label:l.label||targetName(l.dst), sub: shortName((g.byId[l.dst]||{}).name||''), dst:l.dst}));
+  drawSheet(g.short, node.text, opts, true);
+}
+function drawSheet(eyebrow, title, opts, isDecision){
+  removeSheet();
+  const scrim=el('div','scrim'); scrim.id='sheet';
+  const sh=el('div','sheet');
+  sh.appendChild(el('div','handle'));
+  sh.appendChild(el('div','eyebrow',esc(eyebrow)));
+  sh.appendChild(el('h3',null,esc(title)));
+  opts.forEach((o,i)=>{
+    const b=el('button','opt'); b.innerHTML=`<span class="n">${i+1}</span><span>${esc(o.label)}${o.sub&&o.sub!==o.label?`<small>${esc(o.sub)}</small>`:''}</span>`;
+    b.onclick=()=>{ go(o.dst); };
+    sh.appendChild(b);
+  });
+  const c=el('button','cancel', isDecision?'← Back':'Cancel'); c.onclick=()=>{ if(isDecision) back(); else removeSheet(); };
+  sh.appendChild(c);
+  scrim.appendChild(sh);
+  scrim.addEventListener('click', e=>{ if(e.target===scrim && !isDecision) removeSheet(); });
+  $('#phone').appendChild(scrim);
+}
+function removeSheet(){ const s=$('#sheet'); if(s) s.remove(); }
+
+// ---------- auto advance ----------
+function startAuto(link){
+  const bar=$('#autobar'); bar.style.transition='none'; bar.style.width='0';
+  requestAnimationFrame(()=>{ bar.style.transition=`width ${link.delay||2000}ms linear`; bar.style.width='100%'; });
+  toast((link.label||'Continuing')+' · tap to skip');
+  state.timer=setTimeout(()=>{ bar.style.transition='none'; bar.style.width='0'; go(link.dst); }, link.delay||2000);
+  $('#screen').onclick = ()=>{ if(state.timer){ clearTimer(); go(link.dst); } };
+}
+function clearTimer(){ if(state.timer){ clearTimeout(state.timer); state.timer=null; } const bar=$('#autobar'); if(bar){ bar.style.transition='none'; bar.style.width='0'; } $('#screen').onclick=null; }
+let toastT; function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),1800); }
+
+// ---------- panel ----------
+function renderPanelHome(){
+  const p=$('#panel'); p.innerHTML='';
+  p.appendChild(el('h1',null,'Facilitator panel'));
+  p.appendChild(el('div','sub','Pick a flow to see screen notes, tags and paths here.'));
+  p.appendChild(el('h4',null,'Flows'));
+  const list=el('div','list');
+  P.groups.forEach(g=>{ const b=el('button','it'); b.innerHTML=`<span class="nm">${esc(g.title)}</span><span class="tg">${g.screens.length}</span>`; b.onclick=()=>location.hash='#/'+g.key+'/'+encodeURIComponent(g.entry); list.appendChild(b); });
+  p.appendChild(list);
+  p.appendChild(el('div','kbd','Source: Figma file <b>onX Hunt · Gatsby · Trail Camera</b>, page <b>P1 - Flow</b>. Screens are exported at 2× from Figma; hotspots come from the flow arrows.'));
+}
+function renderPanel(node){
+  const g=state.g; const p=$('#panel'); p.innerHTML='';
+  const isScreen=node.type==='screen';
+  const idx = isScreen ? g.orderIdx[node.id] : -1;
+  p.appendChild(el('h1',null, esc(isScreen?cleanName(node.name):(node.type==='card'?node.title:'Decision'))));
+  const subBits=[esc(g.title)]; if(isScreen) subBits.push(`screen ${idx+1} of ${g.screens.length}`); subBits.push(`<span class="small">${esc(node.id)}</span>`);
+  p.appendChild(el('div','sub',subBits.join(' · ')));
+  if(isScreen){
+    const chips=el('div','chips');
+    (node.tags||[]).forEach(t=>chips.appendChild(el('span','chip '+esc(t),esc(t))));
+    if(node.lane && node.lane!=='All screens') chips.appendChild(el('span','chip lane',esc(node.lane)));
+    if(node.h>node.w*2.3) chips.appendChild(el('span','chip','scrolls ↕'));
+    if(node.w!==375) chips.appendChild(el('span','chip','device mockup'));
+    if(chips.children.length) p.appendChild(chips);
+    (node.captions||[]).forEach(c=>p.appendChild(el('div','caption',esc(c))));
+    (node.callouts||[]).length && p.appendChild(el('div','caption','Callouts on this screen: '+node.callouts.map(c=>`<b>${esc(c.text)}</b> (y≈${c.y})`).join(', ')));
+  }
+  if(node.type==='decision'){ p.appendChild(el('div','caption',esc(node.text))); }
+  // notes
+  const notes=(g.notesBy[node.id]||[]);
+  if(notes.length){ p.appendChild(el('h4',null,'Designer notes')); notes.forEach(n=>{ const d=el('div','note'); if(n.text){ const lines=n.text.split('\n'); d.innerHTML=`<b>${esc(lines[0])}</b>${esc(lines.slice(1).join('\n'))}`; } if(n.img){ const im=el('img'); im.src='img/'+n.img; d.appendChild(im); } p.appendChild(d); }); }
+  // attached images
+  const imgs=(g.images[node.id]||[]);
+  if(imgs.length){ p.appendChild(el('h4',null,'Context photos')); const t=el('div','thumbs'); imgs.forEach(i=>{ const im=el('img'); im.src='img/'+i.img; im.title=i.name; im.onclick=()=>lightbox('img/'+i.img); t.appendChild(im); }); p.appendChild(t); }
+  // paths
+  const out=(g.out[node.id]||[]);
+  if(out.length){
+    p.appendChild(el('h4',null,'Paths from here'));
+    const L=el('div','links');
+    const order={figma:0,decision:0,card:0,inferred:1,auto:2,alt:3,conceptual:4,seq:5};
+    out.slice().sort((a,b)=>(order[a.kind]||0)-(order[b.kind]||0)).forEach(l=>{
+      const b=el('button','lnk k-'+l.kind);
+      const kindTxt={figma:'Figma arrow',decision:'branch',card:'storyboard',inferred:'inferred tap',auto:`auto after ${((l.delay||2000)/1000).toFixed(1)}s`,alt:'simulate / alternate',conceptual:'state change (no tap)',seq:'board order'}[l.kind]||l.kind;
+      b.innerHTML=`<span class="k"></span><span class="t"><b>${esc(l.label||targetName(l.dst))}</b><small>→ ${esc(targetName(l.dst))} · ${kindTxt}</small></span>`;
+      b.onclick=()=>go(l.dst);
+      b.onmouseenter=()=>{ const h=[...document.querySelectorAll('.hs')].find(e=>e.dataset.dst===l.dst); if(h) h.classList.add('show'); };
+      b.onmouseleave=()=>{ document.querySelectorAll('.hs.show').forEach(e=>e.classList.remove('show')); };
+      L.appendChild(b);
+    });
+    p.appendChild(L);
+    p.appendChild(el('div','legend','<i style="background:var(--blue)"></i>from a Figma arrow &nbsp; <i style="background:var(--amber)"></i>inferred from layout &nbsp; <i style="background:#c47cff"></i>simulate a branch &nbsp; <i style="background:var(--text3)"></i>no tap target'));
+  } else if(isScreen){
+    p.appendChild(el('h4',null,'Paths from here'));
+    p.appendChild(el('div','caption','End of this path in Figma. Use ← or jump below.'));
+  }
+  // arrived from
+  const inn=(g.inn[node.id]||[]).filter(l=>g.byId[l.src]);
+  if(inn.length){ p.appendChild(el('h4',null,'Reached from')); const L=el('div','links'); inn.slice(0,8).forEach(l=>{ const b=el('button','lnk k-'+l.kind); b.innerHTML=`<span class="k"></span><span class="t"><b>${esc(targetName(l.src))}</b><small>${esc(l.label||'')}</small></span>`; b.onclick=()=>go(l.src); L.appendChild(b); }); p.appendChild(L); }
+  // flow-level notes
+  const fnotes=g.notesBy['_flow']||[];
+  const det=el('details'); det.appendChild(el('summary',null,'About this flow'));
+  det.appendChild(el('div','prose',esc(g.blurb)));
+  fnotes.forEach(n=>{ if(n.text){ const d=el('div','note'); const lines=n.text.split('\n'); d.innerHTML=`<b>${esc(lines[0])}</b>${esc(lines.slice(1).join('\n'))}`; det.appendChild(d);} });
+  if(g.flow_text){ det.appendChild(el('div','prose',esc(g.flow_text))); }
+  const fimgs=g.images['_flow']||[];
+  if(fimgs.length){ const t=el('div','thumbs'); fimgs.forEach(i=>{ const im=el('img'); im.src='img/'+i.img; im.onclick=()=>lightbox('img/'+i.img); t.appendChild(im); }); det.appendChild(t); }
+  p.appendChild(det);
+  // screen list
+  const det2=el('details'); det2.open = true; det2.appendChild(el('summary',null,`All ${g.screens.length} screens in this flow`));
+  const list=el('div','list scroll'); let lastLane=null;
+  g.order.forEach((id,i)=>{ const s=g.byId[id]; if(!s) return; if(s.lane!==lastLane && g.lanes.length>1){ list.appendChild(el('div','lanehd',esc(s.lane))); lastLane=s.lane; }
+    const b=el('button','it'+(id===node.id?' cur':'')); b.innerHTML=`<span class="n">${i+1}</span><span class="nm">${esc(cleanName(s.name))}</span>${(s.tags||[])[0]?`<span class="tg">${esc(s.tags[0])}</span>`:''}`; b.onclick=()=>go(id); list.appendChild(b); });
+  det2.appendChild(list); p.appendChild(det2);
+  p.appendChild(el('div','kbd','<kbd>H</kbd> hotspots · <kbd>A</kbd> callouts · <kbd>F</kbd> panel · <kbd>←</kbd> back · <kbd>→</kbd> first path · <kbd>Esc</kbd> all flows'));
+  const cur=p.querySelector('.it.cur'); if(cur){ const L=cur.parentElement; L.scrollTop = Math.max(0, cur.offsetTop - L.clientHeight/2); }
+}
+
+function lightbox(src){ const lb=el('div','lightbox'); const im=el('img'); im.src=src; lb.appendChild(im); lb.onclick=()=>lb.remove(); document.body.appendChild(lb); }
+
+// ---------- phone fitting ----------
+function fitPhone(){
+  const st=$('#stage'); const ph=$('#phone');
+  const W=st.clientWidth, H=st.clientHeight;
+  const flat = W<=480;
+  ph.classList.toggle('flat', flat);
+  const pad = flat? 0 : 40;
+  const s = Math.min((H-pad)/812, (W-pad)/375, flat?10:1.05);
+  ph.style.transform = `scale(${s})`;
+}
+window.addEventListener('resize', fitPhone);
+
+// ---------- share ----------
+function copyLink(g, id, test){
+  const u=new URL(location.href); u.search=''; if(test) u.searchParams.set('mode','test'); u.hash='#/'+g.key+'/'+encodeURIComponent(id);
+  navigator.clipboard && navigator.clipboard.writeText(u.toString());
+  return u.toString();
+}
+
+// ---------- controls ----------
+$('#btnHome').onclick=showHomeHash;
+$('#btnBack').onclick=back;
+$('#btnHs').onclick=()=>{ state.showHs=!state.showHs; $('#btnHs').classList.toggle('active',state.showHs); $('#phone').classList.toggle('showhs',state.showHs); };
+$('#btnAnnot').onclick=()=>{ document.body.classList.toggle('annot'); $('#btnAnnot').classList.toggle('active',document.body.classList.contains('annot')); };
+$('#btnAnnot').classList.add('active');
+$('#btnPanel').onclick=()=>{ document.body.classList.toggle('nopanel'); localStorage.setItem('proto.panel', document.body.classList.contains('nopanel')?'off':'on'); fitPhone(); };
+$('#btnMode').onclick=()=>{ const u=new URL(location.href); if(state.test) u.searchParams.delete('mode'); else u.searchParams.set('mode','test'); location.href=u.toString(); };
+$('#btnShare').onclick=(e)=>{ if(!state.g){ navigator.clipboard&&navigator.clipboard.writeText(location.href.split('#')[0]); } else copyLink(state.g, state.node.id, state.test); toast('Link copied'); const t=e.currentTarget.querySelector('.txt'); if(t){ t.textContent='Copied ✓'; setTimeout(()=>t.textContent='Copy link',1500);} };
+const sel=$('#flowSel'); sel.appendChild(el('option',null,'All flows…')).value='';
+P.groups.forEach(g=>{ const o=el('option',null,esc(g.short)); o.value=g.key; sel.appendChild(o); });
+sel.onchange=()=>{ const g=groups[sel.value]; if(g) location.hash='#/'+g.key+'/'+encodeURIComponent(g.entry); else showHomeHash(); };
+document.addEventListener('keydown', e=>{
+  if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT') return;
+  if(e.key==='ArrowLeft'){ back(); }
+  else if(e.key==='ArrowRight'){ if(state.g&&state.node){ const out=state.g.out[state.node.id]||[]; const l=out.find(x=>x.kind!=='alt'&&x.kind!=='conceptual')||out[0]; if(l) go(l.dst); else { const i=state.g.orderIdx[state.node.id]; const nid=state.g.order[i+1]; if(nid) go(nid); } } }
+  else if(e.key==='h'||e.key==='H'){ $('#btnHs').click(); }
+  else if(e.key==='a'||e.key==='A'){ $('#btnAnnot').click(); }
+  else if(e.key==='f'||e.key==='F'){ if(!state.test) $('#btnPanel').click(); }
+  else if(e.key==='Escape'){ showHomeHash(); }
+});
+if(state.test){ document.body.classList.remove('annot'); $('#btnAnnot').classList.remove('active'); }
+route(); fitPhone();
+})();
+</script>
+</body>
+</html>
